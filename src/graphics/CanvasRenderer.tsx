@@ -1,24 +1,29 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import ModelLoader, { FBXModel } from './ModelLoader';
+import { FBXModel } from './ModelLoader';
 
 export default class CanvasRenderer {
 
     canvas: HTMLCanvasElement
-    scene = new THREE.Scene()
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    scene: THREE.Scene
+    camera: THREE.PerspectiveCamera
     renderer: THREE.WebGLRenderer
     controls: OrbitControls
     animatedModels: Map<FBXModel, THREE.AnimationMixer> = new Map()
     clock = new THREE.Clock()
 
     constructor(canvas: HTMLCanvasElement) {
-        // Canvas setup
+        // Strictly one-time setup
         this.canvas = canvas
+        this.scene = new THREE.Scene()
+        this.renderer = new THREE.WebGLRenderer({ canvas })
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+        this.controls = new OrbitControls(this.camera, this.canvas)
+    }
 
+    init() {
         // Three.js setup
         this.camera.position.z = 5
-        this.renderer = new THREE.WebGLRenderer({ canvas })
         this.renderer.setSize(window.innerWidth, window.innerHeight)
 
         // TODO: Remove after testing
@@ -30,11 +35,10 @@ export default class CanvasRenderer {
         cube.scale.set(20, 20, 20)
         this.scene.add(cube)
 
-        this.controls = new OrbitControls(this.camera, canvas)
         this.controls.enableZoom = true
     }
 
-    addModelToScene = (model: FBXModel, autoplay = false) => {
+    addModelToScene = (model: FBXModel) => {
         this.scene.add(model)
 
         if (model.animations && model.animations.length > 0) {
@@ -43,12 +47,8 @@ export default class CanvasRenderer {
             // Cache it in the map so we can update animation states later
             this.animatedModels.set(model, mixer)
 
-            if (autoplay) {
-                const action = mixer.clipAction(model.animations[0])
-                console.debug(model.animations[0])
-                action.loop = THREE.LoopPingPong
-                action.play()
-            }
+            const action = mixer.clipAction(model.animations[0])
+            action.play()
         }
     }
 
@@ -60,12 +60,6 @@ export default class CanvasRenderer {
         /* Update state of scene */
         // Update controls
         this.controls.update()
-
-        // Update animated models in the scene
-        const animDeltaTime = this.clock.getDelta()
-        for (const [, mixer] of this.animatedModels.entries()) {
-            mixer.update(animDeltaTime)
-        }
 
         // Draw call
         this.renderer.render(this.scene, this.camera)
@@ -80,6 +74,8 @@ export default class CanvasRenderer {
     }
 
     cleanup = () => {
+        console.log('Cleaning up...')
+        this.scene.clear()
         this.renderer.dispose()
         this.controls.dispose()
     }
