@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModelLoader, { FBXModel } from './graphics/ModelLoader'
 import CanvasRenderer from './graphics/CanvasRenderer'
 import Scrubber, { DefaultScrubberStyle, ScrubberProps } from './components/Scrubber'
-import { Bone, Object3D, SkinnedMesh } from 'three'
+import { Bone, Object3D, SkinnedMesh, Vector3 } from 'three'
 import { CCDIKSolver, TransformControls } from 'three/examples/jsm/Addons.js'
 
 // FIX: Component assumes model always has animations
@@ -41,10 +41,7 @@ function App() {
     canvasRenderer.addModelToScene(timelineModel)
     canvasRenderer.camera.position.set(100, 140, 340)
 
-    const [transformControls] = generateIKComponents(timelineModel, canvasRenderer)
-    if (transformControls) {
-      canvasRenderer.scene.add(transformControls.getHelper())
-    }
+    generateIKComponents(timelineModel, canvasRenderer)
     // canvasRenderer.scene.add(solver.createHelper())
 
     canvasRenderer.startRenderLoop()
@@ -108,9 +105,9 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
   })
 
   // Nothing to do if we don't have a body
-  if (!bodyParams.body) return [undefined]
+  if (!bodyParams.body) return
 
-  const skeleton = bodyParams.body.skeleton
+  const skeleton = bodyParams!.body!.skeleton
 
   // If the target bone doesn't exist, make one
   if (skeleton.bones[skeleton.bones.length - 1].name !== 'target') {
@@ -120,7 +117,10 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
     targetBone.name = 'target'
     targetBone.userData = {}
     targetBone.children = []
-    targetBone.parent = leftHandBone.parent
+    targetBone.parent = canvasRenderer.scene
+    targetBone.matrixWorld = canvasRenderer.scene.matrixWorld.clone()
+    targetBone.matrix = canvasRenderer.scene.matrix.clone()
+
 
     // Update other info
     const boneMatrix = skeleton.boneMatrices.slice(31 * 16, 32 * 16)
@@ -144,37 +144,35 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
   // Add transform controller to the scene
   const transformControls = new TransformControls(canvasRenderer.camera, canvasRenderer.canvas);
   transformControls.size = 0.75;
+  transformControls.showX = true;
   transformControls.space = 'world';
   transformControls.attach(bodyParams.target);
-
-  console.debug(transformControls.getHelper().position)
-  console.debug(bodyParams.target.position)
-
 
   // disable orbitControls while using transformControls
   transformControls.addEventListener('mouseDown', () => canvasRenderer.orbitControls.enabled = false);
   transformControls.addEventListener('mouseUp', () => canvasRenderer.orbitControls.enabled = true);
 
-  // const iks = [
-  //   {
-  //     target: bodyParams.body.skeleton.bones.length - 1,
-  //     effector: 31,
-  //     links: [
-  //       {
-  //         index: 30
-  //       },
-  //       {
-  //         index: 29
-  //       }
-  //     ]
-  //   }
-  // ]
+  const iks = [
+    {
+      target: skeleton.bones.length - 1,
+      effector: 31,
+      links: [
+        {
+          index: 30,
+        },
+        {
+          index: 29,
+        }
+      ]
+    }
+  ]
 
   // Create the IK solver
-  // const solver = new CCDIKSolver(bodyParams.body, iks)
+  const solver = new CCDIKSolver(bodyParams.body!, iks)
 
   // Add components to the scene
-  return [transformControls,]
+  canvasRenderer.scene.add(transformControls.getHelper())
+  canvasRenderer.setSolver(solver)
 }
 
 export default App

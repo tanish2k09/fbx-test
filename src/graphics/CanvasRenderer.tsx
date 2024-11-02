@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FBXModel } from './ModelLoader';
+import { CCDIKSolver } from 'three/examples/jsm/Addons.js';
 
 export default class CanvasRenderer {
 
@@ -11,6 +12,7 @@ export default class CanvasRenderer {
     orbitControls: OrbitControls
     #animatedModels: Map<FBXModel, THREE.AnimationMixer> = new Map()
     clock = new THREE.Clock()
+    solver: CCDIKSolver | null = null
 
     constructor(canvas: HTMLCanvasElement) {
         // Strictly one-time setup
@@ -57,6 +59,11 @@ export default class CanvasRenderer {
         // Update controls
         this.orbitControls.update()
 
+        // Update IK solver
+        if (this.solver) {
+            this.solver.update()
+        }
+
         // Draw call
         this.renderer.render(this.scene, this.camera)
     }
@@ -71,6 +78,11 @@ export default class CanvasRenderer {
 
     getMixerForModel = (model: FBXModel) => {
         return this.#animatedModels.get(model)
+    }
+
+
+    setSolver = (solver: CCDIKSolver) => {
+        this.solver = solver
     }
 
     cleanup = () => {
