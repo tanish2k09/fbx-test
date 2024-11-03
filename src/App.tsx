@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModelLoader, { FBXModel } from './graphics/ModelLoader'
 import CanvasRenderer from './graphics/CanvasRenderer'
 import Scrubber, { DefaultScrubberStyle, ScrubberProps } from './components/Scrubber'
-import { Bone, Object3D, SkinnedMesh, Vector3 } from 'three'
+import { Bone, Matrix4, Object3D, SkinnedMesh, Vector3 } from 'three'
 import { CCDIKSolver, TransformControls } from 'three/examples/jsm/Addons.js'
+import { Matrix4Uniform } from 'three/src/renderers/common/Uniform.js'
 
 // FIX: Component assumes model always has animations
 function App() {
@@ -113,24 +114,21 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
   if (skeleton.bones[skeleton.bones.length - 1].name !== 'target') {
     const leftHandBone = skeleton.bones[31]
     const targetBone = new Bone()
-    targetBone.copy(leftHandBone)
     targetBone.name = 'target'
     targetBone.userData = {}
     targetBone.children = []
-    targetBone.parent = canvasRenderer.scene
-    targetBone.matrixWorld = canvasRenderer.scene.matrixWorld.clone()
-    targetBone.matrix = canvasRenderer.scene.matrix.clone()
 
+    // FIX: Avoids error that tranform controls need to be attached to a scene element
+    targetBone.parent = canvasRenderer.scene
+    leftHandBone.getWorldPosition(targetBone.position) // Set the position of the target bone to the left hand bone in world space
 
     // Update other info
-    const boneMatrix = skeleton.boneMatrices.slice(31 * 16, 32 * 16)
+    const boneIdentityMatrix = new Matrix4()
     const newMatrices = new Float32Array(skeleton.boneMatrices.length + 16)
+
     newMatrices.set(skeleton.boneMatrices)
-    newMatrices.set(boneMatrix, skeleton.boneMatrices.length)
-
-    const targetInverse = skeleton.boneInverses[31].clone()
-
-    skeleton.boneInverses.push(targetInverse)
+    newMatrices.set(boneIdentityMatrix.elements, skeleton.boneMatrices.length)
+    skeleton.boneInverses.push(boneIdentityMatrix)
     skeleton.boneMatrices = newMatrices
     skeleton.bones.push(targetBone)
 
