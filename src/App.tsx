@@ -171,6 +171,7 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
   // Add components to the scene
   canvasRenderer.scene.add(transformControls.getHelper())
   canvasRenderer.setSolver(solver)
+  canvasRenderer.scene.add(solver.createHelper(1))
 }
 
 export default App
