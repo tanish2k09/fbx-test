@@ -2,11 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ModelLoader, { FBXModel } from './graphics/ModelLoader'
 import CanvasRenderer from './graphics/CanvasRenderer'
 import Scrubber, { DefaultScrubberStyle, ScrubberProps } from './components/Scrubber'
-import { Bone, Matrix4, Object3D, SkinnedMesh, Vector3 } from 'three'
+import { Bone, Matrix4, SkinnedMesh } from 'three'
 import { CCDIKSolver, TransformControls } from 'three/examples/jsm/Addons.js'
-import { Matrix4Uniform } from 'three/src/renderers/common/Uniform.js'
 
-// FIX: Component assumes model always has animations
+// TODO: Fix - component assumes model always has animations
 function App() {
 
   const modelLoaderRef = useRef<ModelLoader>()
@@ -14,8 +13,6 @@ function App() {
   const canvasRendererRef = useRef<CanvasRenderer | null>(null)
   const [timelineModel, setTimelineModel] = useState<FBXModel | null>(null)
   const [scrubIndex, setScrubIndex] = useState(0)
-
-  // console.warn(timelineModel)
 
   // Make sure we have our model loader ready (only once)
   if (!modelLoaderRef.current) {
@@ -73,6 +70,8 @@ function App() {
     setScrubIndex(parseInt(e.target.value))
   }, [])
 
+  // Generate scrubber props based on model's animation details
+  // We can just reuse it unless model changes
   const scrubProps = useMemo<ScrubberProps | null>(() => {
     return timelineModel ? {
       className: DefaultScrubberStyle,
@@ -95,6 +94,8 @@ function App() {
   )
 }
 
+// Temporary separate helper function that handles IK and its visual components
+// Contains hardcoded child components (like names) for the model demo
 const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) => {
   const bodyParams: { body?: SkinnedMesh, target?: Bone, reference?: Bone } = {}
 
@@ -131,9 +132,6 @@ const generateIKComponents = (model: FBXModel, canvasRenderer: CanvasRenderer) =
     skeleton.boneInverses.push(boneIdentityMatrix)
     skeleton.boneMatrices = newMatrices
     skeleton.bones.push(targetBone)
-
-    console.debug(leftHandBone)
-    console.debug(targetBone)
   }
 
   // Set the target bone, which is the last bone
