@@ -40,7 +40,6 @@ function App() {
     canvasRenderer.camera.position.set(100, 140, 340)
 
     generateIKComponents(timelineModel, canvasRenderer)
-    // canvasRenderer.scene.add(solver.createHelper())
 
     canvasRenderer.startRenderLoop()
 
